@@ -21,6 +21,16 @@ class Vk:
             user_name = None
         return user_name
 
+    def get_sex(self, user_id: int) -> int:
+        """Функция возвращает пол пользователя ВК.
+        1-Женский, 2-Мужской, 0-Не указан"""
+        sex = 0
+        if user_id:
+            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token, 'fields': 'sex'}
+            r = requests.get('https://api.vk.com/method/users.get', params=param).json()
+            sex = r['response'][0]['sex']
+        return sex
+
     def get_birthdate(self, user_id: int) -> datetime:
         """Функция возвращает дату рождения пользователя ВК, если она доступна в полном формате.
           В остальных случаях возвращает значение None."""
@@ -72,10 +82,8 @@ class Vk:
 
 inst_vk = Vk(vk_user_token)
 random_number = randint(0, 50000000)
-# print(random_number)
-print(inst_vk.get_birthdate(21330854))
-print(inst_vk.get_birthdate(10098151))
-print(inst_vk.get_age_delta(21330854, 10098151))
+print(random_number)
+inst_vk.get_sex(random_number)
 # print(inst_vk.get_name(inst_vk.check_user(random_number)), inst_vk.check_user(random_number)) 21330854 10098151
 
 
