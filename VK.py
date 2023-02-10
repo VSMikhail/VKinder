@@ -7,58 +7,38 @@ class Vk:
         self.token = token
 
     def search_potential_partners(self, sex: int = 0, city: int = 0):
-        """Поиск пользователей ВК со статусом в активном поиске по полу и городу России."""
+        """Поиск пользователей ВК со статусом 'в активном поиске' по полу и городу России."""
         param = {'v': '5.131', 'access_token': self.token, 'count': 500, 'country_id': 1,
                  'city_id': city, 'sex': sex, 'status': 6, 'fields': 'relation, bdate, city'}
         return requests.get('https://api.vk.com/method/users.search', params=param).json()
 
-    def get_sex(self, user_id: int) -> int:
-        """Метод возвращает пол пользователя ВК.
-        1-Женский, 2-Мужской, 0-Не указан"""
-        sex = 0
+    def get_user_info(self, user_id: int, name_case: str = 'nom') -> dict:
+        """Метод возвращает словарь с информацией о пользователе ВК."""
+        user_info = {}
         if user_id:
-            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token, 'fields': 'sex'}
+            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token,
+                     'fields': 'sex, city, relation, bdate', 'name_case': name_case}
             r = requests.get('https://api.vk.com/method/users.get', params=param).json()
+            try:
+                user_name = r['response'][0]['first_name'] + ' ' + r['response'][0]['last_name']
+            except KeyError:
+                user_name = None
+            user_info['user_name'] = user_name
             try:
                 sex = r['response'][0]['sex']
             except KeyError:
                 sex = 0
-        return sex
-
-    def get_city_id(self, user_id: int) -> int:
-        """Метод возвращает id города, указанного на странице пользователя ВК.
-        None - если город не указан"""
-        city_id = None
-        if user_id:
-            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token, 'fields': 'city'}
-            r = requests.get('https://api.vk.com/method/users.get', params=param).json()
+            user_info['sex'] = sex
             try:
                 city_id = r['response'][0]['city']['id']
             except KeyError:
                 city_id = None
-        return city_id
-
-    def get_relation_id(self, user_id: int) -> int:
-        """Метод возвращает id семейного положения пользователя ВК.
-        1 — не женат/не замужем; 2 — есть друг/есть подруга; 3 — помолвлен/помолвлена; 4 — женат/замужем;
-        5 — всё сложно; 6 — в активном поиске; 7 — влюблён/влюблена; 8 — в гражданском браке; 0 — не указано."""
-        relation_id = 0
-        if user_id:
-            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token, 'fields': 'relation'}
-            r = requests.get('https://api.vk.com/method/users.get', params=param).json()
+            user_info['city_id'] = city_id
             try:
                 relation_id = r['response'][0]['relation']
             except KeyError:
                 relation_id = 0
-        return relation_id
-
-    def get_birthdate(self, user_id: int) -> datetime:
-        """Метод возвращает дату рождения пользователя ВК, если она доступна в полном формате.
-          В остальных случаях возвращает значение None."""
-        birthdate = None
-        if user_id:
-            param = {'user_ids': user_id, 'v': '5.131', 'access_token': self.token, 'fields': 'bdate'}
-            r = requests.get('https://api.vk.com/method/users.get', params=param).json()
+            user_info['relation_id'] = relation_id
             try:
                 birthdate_str = r['response'][0]['bdate']
                 if len(birthdate_str) > 5:
@@ -67,4 +47,29 @@ class Vk:
                     birthdate = None
             except KeyError:
                 birthdate = None
-        return birthdate
+            user_info['birthdate'] = birthdate
+        return user_info
+
+    def get_three_photos(self, user_id):
+        """Метод подбирает 3 фотографии профиля с наибольшим количеством лайков и комментариев."""
+        r = requests.get('https://api.vk.com/method/photos.get',
+                         params={'owner_id': user_id, 'v': '5.131', 'access_token': self.token, 'extended': '1',
+                                 'album_id': 'profile'})
+        r = r.json()
+        try:
+            items = r['response']['items']
+            photo_dict = {}
+            for item in items:
+                try:
+                    likes = item['likes']['count']
+                    comments = item['comments']['count']
+                    media_id = item['id']
+                    popularity = likes + comments
+                    photo_dict[f'photo{user_id}_{media_id}'] = popularity
+                except KeyError:
+                    pass
+            sort_by_popularity = sorted(photo_dict, key=photo_dict.get, reverse=True)
+            three_photos = sort_by_popularity[0:3]
+            return ','.join(three_photos)
+        except KeyError:
+            return None
