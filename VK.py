@@ -58,18 +58,19 @@ class Vk:
         r = r.json()
         try:
             items = r['response']['items']
-            photo_dict = {}
-            for item in items:
-                try:
-                    likes = item['likes']['count']
-                    comments = item['comments']['count']
-                    media_id = item['id']
-                    popularity = likes + comments
-                    photo_dict[f'photo{user_id}_{media_id}'] = popularity
-                except KeyError:
-                    pass
-            sort_by_popularity = sorted(photo_dict, key=photo_dict.get, reverse=True)
-            three_photos = sort_by_popularity[0:3]
-            return ','.join(three_photos)
         except KeyError:
             return None
+        photo_dict = {}
+        for item in items:
+            try:
+                likes = item['likes']['count']
+                comments = item['comments']['count']
+                media_id = item['id']
+                popularity = likes + comments
+                photo_dict[f'photo{user_id}_{media_id}'] = popularity
+            except KeyError:
+                photo_dict[f'photo{user_id}_{media_id}'] = None
+        sort_by_popularity = sorted(photo_dict, key=photo_dict.get, reverse=True)
+        three_photos = sort_by_popularity[0:3]
+        return ','.join(three_photos)
+

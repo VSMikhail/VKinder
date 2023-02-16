@@ -1,5 +1,5 @@
 import psycopg2
-from tokens import db_password
+from Tokens import db_password
 
 
 def conn():
